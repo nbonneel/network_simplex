@@ -4,9 +4,13 @@
  * This file has been adapted by Nicolas Bonneel (2013), 
  * from network_simplex.h from LEMON, a generic C++ optimization library,
  * to implement a lightweight network simplex for mass transport, more 
- * memory efficient that the original file. A previous version of this file 
+ * memory efficient than the original file. A previous version of this file 
  * is used as part of the Displacement Interpolation project, 
  * Web: http://www.cs.ubc.ca/labs/imager/tr/2011/DisplacementInterpolation/
+ *
+ * Revisions:
+ * March 2015: added OpenMP parallelization
+ * March 2017: included Antoine Rolet's trick to make it more robust
  * 
  *
  **** Original file Copyright Notice :
@@ -47,12 +51,16 @@
 #endif
 //#include "core.h"
 //#include "lmath.h"
+#include <omp.h>
+#include <cmath>
+
 
 //#include "sparse_array_n.h"
 #include "full_bipartitegraph.h"
 
 #define INVALIDNODE -1
 #define INVALID (-1)
+#define EPSILON 2.2204460492503131e-015
 
 namespace lemon {
 
@@ -441,7 +449,7 @@ template <typename T>
         _next_arc(0),_ns(ns)
       {
         // The main parameters of the pivot rule
-        const double BLOCK_SIZE_FACTOR = 1.0;
+        const double BLOCK_SIZE_FACTOR = 0.25;
         const int MIN_BLOCK_SIZE = 10;
 
         _block_size = std::max( int(BLOCK_SIZE_FACTOR *
@@ -450,37 +458,47 @@ template <typename T>
       }
 
       // Find next entering arc
-      bool findEnteringArc() {
-        Cost c, min = 0;
-        int cnt = _block_size;
-        int e;
-        for (e = _next_arc; e != _search_arc_num; ++e) {
-          c = _state[e] * (_cost[e] + _pi[_source[e]] - _pi[_target[e]]); 
-		  //c = _state[e] * (_cost[e] + _pi[_ns.getSource(e)] - _pi[_target[e]]);
-          if (c < min) {
-            min = c;
-            _in_arc = e;
-          }
-          if (--cnt == 0) {
-            if (min < 0) goto search_end;
-            cnt = _block_size;
-          }
-        }
-        for (e = 0; e != _next_arc; ++e) {
-          c = _state[e] * (_cost[e] + _pi[_source[e]] - _pi[_target[e]]);
-          if (c < min) {
-            min = c;
-            _in_arc = e;
-          }
-          if (--cnt == 0) {
-            if (min < 0) goto search_end;
-            cnt = _block_size;
-          }
-        }
-        if (min >= 0) return false;
+	  bool findEnteringArc() {
+		  Cost min_val = 0;
+		  
+		  Cost minArray[32]; memset(minArray, 0, sizeof(Cost) * 32);
+		  int arcId[32];
+		  int N = omp_get_max_threads();
+		  int bs = (int)ceil(_block_size / (double)N);
+		  for (int i = 0; i < _search_arc_num ; i += _block_size) {
+			  
+			  int e;
+			  int j;
+#pragma omp parallel
+			  {		
+				  int t = omp_get_thread_num();
 
-      search_end:
-        _next_arc = e;
+#pragma omp for schedule(static, bs) lastprivate(e)
+				  for (j = 0; j < std::min(i + _block_size, _search_arc_num) - i; j++){
+					  e = (_next_arc + i + j); if (e>=_search_arc_num) e-=_search_arc_num;
+					  Cost c = _state[e] * (_cost[e] + _pi[_source[e]] - _pi[_target[e]]);					 
+					  if (c < minArray[t]) {
+						  minArray[t] = c;
+						  arcId[t] = e;
+					  }
+				  }
+			  }
+			  for (int j = 0; j < N; j++){
+				  if (minArray[j] < min_val){
+					  min_val = minArray[j];
+					  _in_arc = arcId[j];
+				  }
+			  }
+              double a=std::abs(_pi[_source[_in_arc]])>std::abs(_pi[_target[_in_arc]]) ? std::abs(_pi[_source[_in_arc]]):std::abs(_pi[_target[_in_arc]]);
+              a=a>std::abs(_cost[_in_arc])?a:std::abs(_cost[_in_arc]);			  
+			  if (min_val < -EPSILON*a) {
+				  _next_arc = e;
+				  return true;
+			  }
+		  }
+
+		if (min_val >= 0) return false;
+        
         return true;
       }
 
