@@ -11,7 +11,7 @@
 * Revisions:
 * March 2015: added OpenMP parallelization
 * March 2017: included Antoine Rolet's trick to make it more robust
-* April 2018: bug fix + 64bit integers, updated to a newer version of the algo by LEMON, sparse flow by default, C++11 compliant/portable code + minor edits.
+* April 2018: IMPORTANT bug fix + uses 64bit integers (slightly slower but less risks of overflows), updated to a newer version of the algo by LEMON, sparse flow by default + minor edits.
 *
 *
 **** Original file Copyright Notice :
@@ -79,12 +79,12 @@ namespace lemon {
 		{
 		}
 		void resize(int n = 0) {};
-		T operator[](const int id) const
+		T operator[](const size_t id) const
 		{
 #ifdef HASHMAP
-			typename std::unordered_map<int, T>::const_iterator it = data.find(id);
+			typename std::unordered_map<size_t, T>::const_iterator it = data.find(id);
 #else
-			typename std::map<int, T>::const_iterator it = data.find(id);
+			typename std::map<size_t, T>::const_iterator it = data.find(id);
 #endif
 			if (it == data.end())
 				return 0;
@@ -92,14 +92,14 @@ namespace lemon {
 				return it->second;
 		}
 
-		ProxyObject<T> operator[](const int id)
+		ProxyObject<T> operator[](const size_t id)
 		{
 			return ProxyObject<T>(this, id);
 		}
 
 		//private:
 #ifdef HASHMAP
-		std::unordered_map<int, T> data;
+		std::unordered_map<size_t, T> data;
 #else
 		std::map<int, T> data;
 #endif
@@ -109,7 +109,7 @@ namespace lemon {
 	template <typename T>
 	class ProxyObject {
 	public:
-		ProxyObject(SparseValueVector<T> *v, int idx) { _v = v; _idx = idx; };
+		ProxyObject(SparseValueVector<T> *v, size_t idx) { _v = v; _idx = idx; };
 		ProxyObject<T> & operator=(const T &v) {
 			// If we get here, we know that operator[] was called to perform a write access,
 			// so we can insert an item in the vector if needed
@@ -122,9 +122,9 @@ namespace lemon {
 			// If we get here, we know that operator[] was called to perform a read access,
 			// so we can simply return the existing object
 #ifdef HASHMAP
-			typename std::unordered_map<int, T>::iterator it = _v->data.find(_idx);
+			typename std::unordered_map<size_t, T>::iterator it = _v->data.find(_idx);
 #else
-			typename std::map<int, T>::iterator it = _v->data.find(_idx);
+			typename std::map<size_t, T>::iterator it = _v->data.find(_idx);
 #endif
 			if (it == _v->data.end())
 				return 0;
@@ -136,9 +136,9 @@ namespace lemon {
 		{
 			if (val == 0) return;
 #ifdef HASHMAP
-			typename std::unordered_map<int, T>::iterator it = _v->data.find(_idx);
+			typename std::unordered_map<size_t, T>::iterator it = _v->data.find(_idx);
 #else
-			typename std::map<int, T>::iterator it = _v->data.find(_idx);
+			typename std::map<size_t, T>::iterator it = _v->data.find(_idx);
 #endif
 			if (it == _v->data.end())
 				_v->data[_idx] = val;
@@ -155,9 +155,9 @@ namespace lemon {
 		{
 			if (val == 0) return;
 #ifdef HASHMAP
-			typename std::unordered_map<int, T>::iterator it = _v->data.find(_idx);
+			typename std::unordered_map<isize_tnt, T>::iterator it = _v->data.find(_idx);
 #else
-			typename std::map<int, T>::iterator it = _v->data.find(_idx);
+			typename std::map<size_t, T>::iterator it = _v->data.find(_idx);
 #endif
 			if (it == _v->data.end())
 				_v->data[_idx] = -val;
@@ -172,7 +172,7 @@ namespace lemon {
 		}
 
 		SparseValueVector<T> *_v;
-		int _idx;
+		size_t _idx;
 	};
 
 
@@ -381,9 +381,9 @@ namespace lemon {
 
 			return subsequence_offset + subsequence_num;
 		}
-		int subsequence_length;
-		int num_big_subsequences;
-		int num_total_big_subsequence_numbers;
+		ArcsType subsequence_length;
+		ArcsType num_big_subsequences;
+		ArcsType num_total_big_subsequence_numbers;
 
 		inline ArcsType getArcID(const Arc &arc) const
 		{
@@ -399,7 +399,7 @@ namespace lemon {
 		}
 
 		// finally unused because too slow
-		inline ArcsType getSource(const int arc) const
+		inline ArcsType getSource(const ArcsType arc) const
 		{
 			//ArcsType a = _source[arc];
 			//return a;
@@ -408,7 +408,7 @@ namespace lemon {
 			if (_arc_mixing)
 				n = mixingCoeff*(n%mixingCoeff) + n / mixingCoeff;
 
-			int b;
+			ArcsType b;
 			if (n >= 0)
 				b = _node_id(_graph.source(GR::arcFromId(n)));
 			else
@@ -840,12 +840,6 @@ namespace lemon {
 		}
 
 
-
-		int divid(int x, int y)
-		{
-			return (x - x%y) / y;
-		}
-
 		/// \brief Reset the internal data structures and all the parameters
 		/// that have been given before.
 		///
@@ -963,9 +957,9 @@ namespace lemon {
 
 #ifdef SPARSE_FLOW
 		#ifdef HASHMAP
-			typename std::unordered_map<int, Value>::const_iterator it;
+			typename std::unordered_map<size_t, Value>::const_iterator it;
 		#else
-			typename std::map<int, Value>::const_iterator it;
+			typename std::map<size_t, Value>::const_iterator it;
 		#endif
 			for (it = _flow.data.begin(); it!=_flow.data.end(); ++it)
 				c += Number(it->second) * Number(_cost[it->first]);
@@ -1116,7 +1110,7 @@ namespace lemon {
 			} else if (_sum_supply > 0) {
 				// LEQ supply constraints
 				_search_arc_num = _arc_num + _node_num;
-				int f = _arc_num + _node_num;
+				ArcsType f = _arc_num + _node_num;
 				for (ArcsType u = 0, e = _arc_num; u != _node_num; ++u, ++e) {
 					_parent[u] = _root;
 					_thread[u] = u + 1;
@@ -1429,7 +1423,7 @@ namespace lemon {
 			if (_sum_supply > 0) total -= _sum_supply;
 			if (total <= 0) return true;
 
-			IntVector arc_vector;
+			ArcVector arc_vector;
 			if (_sum_supply >= 0) {
 				if (supply_nodes.size() == 1 && demand_nodes.size() == 1) {
 					// Perform a reverse graph search from the sink to the source
@@ -1473,7 +1467,7 @@ namespace lemon {
 				}
 			} else {
 				// Find the min. cost outgoing arc for each supply node
-				for (ArcsType i = 0; i != int(supply_nodes.size()); ++i) {
+				for (int i = 0; i != int(supply_nodes.size()); ++i) {
 					Node u = supply_nodes[i];
 					Cost c, min_cost = std::numeric_limits<Cost>::max();
 					Arc min_arc = INVALID;

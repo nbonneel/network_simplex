@@ -88,7 +88,7 @@ namespace lemon {
 
     Arc arc(const Node& s, const Node& t) const {
 		if (s<_n1 && t>=_n1)
-			return Arc(s * _n2 + (t-_n1) );
+			return Arc((int64_t)s * (int64_t)_n2 + (int64_t)(t-_n1) );
 		else
 			return Arc(-1);
     }
