@@ -41,7 +41,7 @@ int main() {
 
 	srand(0);
 
-	int n1 = 10000, n2 = n1; // just demo for the case n1=n2 ; adapt otherwise
+	arc_id_type n1 = 10000, n2 = n1; // just demo for the case n1=n2 ; adapt otherwise
 	std::vector<double> coordsXY(n1 * 2);
 	std::vector<supply_type> weights1(n1), weights2(n2); // works faster with integer weights though
 
