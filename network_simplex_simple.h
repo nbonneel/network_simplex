@@ -63,7 +63,6 @@
 
 #define INVALIDNODE -1
 #define INVALID (-1)
-#define EPSILON 2.2204460492503131e-015
 
 namespace lemon {
 
@@ -75,10 +74,10 @@ namespace lemon {
 	class SparseValueVector
 	{
 	public:
-		SparseValueVector(int n = 0)   // parameter n for compatibility with standard vectors
+		SparseValueVector(size_t n = 0)   // parameter n for compatibility with standard vectors
 		{
 		}
-		void resize(int n = 0) {};
+		void resize(size_t n = 0) {};
 		T operator[](const size_t id) const
 		{
 #ifdef HASHMAP
@@ -101,7 +100,7 @@ namespace lemon {
 #ifdef HASHMAP
 		std::unordered_map<size_t, T> data;
 #else
-		std::map<int, T> data;
+		std::map<size_t, T> data;
 #endif
 
 	};
@@ -339,7 +338,7 @@ namespace lemon {
 
 		// Data for storing the spanning tree structure
 		IntVector _parent;
-		IntVector _pred;
+		ArcVector _pred;
 		IntVector _thread;
 		IntVector _rev_thread;
 		IntVector _succ_num;
@@ -498,7 +497,7 @@ namespace lemon {
 					}
 					Cost a = std::abs(_pi[_source[_in_arc]]) > std::abs(_pi[_target[_in_arc]]) ? std::abs(_pi[_source[_in_arc]]) : std::abs(_pi[_target[_in_arc]]);
 					a = a > std::abs(_cost[_in_arc]) ? a : std::abs(_cost[_in_arc]);
-					if (min_val < -EPSILON*a) {
+					if (min_val < -std::numeric_limits<Cost>::epsilon()*a) {
 						_next_arc = e;
 						return true;
 					}
@@ -506,7 +505,7 @@ namespace lemon {
 
 				Cost a = fabs(_pi[_source[_in_arc]]) > fabs(_pi[_target[_in_arc]]) ? fabs(_pi[_source[_in_arc]]) : fabs(_pi[_target[_in_arc]]);
 				a = a > fabs(_cost[_in_arc]) ? a : fabs(_cost[_in_arc]);
-				if (min_val >= -EPSILON*a) return false;
+				if (min_val >= -std::numeric_limits<Cost>::epsilon()*a) return false;
 
 				return true;
 			}
@@ -1447,42 +1446,44 @@ namespace lemon {
 						}
 					}
 				} else {
+					arc_vector.resize(demand_nodes.size());
 					// Find the min. cost incomming arc for each demand node
-					for (ArcsType i = 0; i != ArcsType(demand_nodes.size()); ++i) {
+#pragma omp parallel for
+					for (ArcsType i = 0; i < ArcsType(demand_nodes.size()); ++i) {
 						Node v = demand_nodes[i];
-						Cost c, min_cost = std::numeric_limits<Cost>::max();
+						Cost min_cost = std::numeric_limits<Cost>::max();
 						Arc min_arc = INVALID;
 						Arc a; _graph.firstIn(a, v);
 						for (; a != INVALID; _graph.nextIn(a)) {
-							c = _cost[getArcID(a)];
+							Cost c = _cost[getArcID(a)];
 							if (c < min_cost) {
 								min_cost = c;
 								min_arc = a;
 							}
-						}
-						if (min_arc != INVALID) {
-							arc_vector.push_back(getArcID(min_arc));
-						}
+						}						
+						arc_vector[i] = getArcID(min_arc);					
 					}
+					arc_vector.erase(std::remove(arc_vector.begin(), arc_vector.end(), INVALID), arc_vector.end());
 				}
 			} else {
+				arc_vector.resize(supply_nodes.size());
 				// Find the min. cost outgoing arc for each supply node
-				for (int i = 0; i != int(supply_nodes.size()); ++i) {
+#pragma omp parallel for
+				for (int i = 0; i < int(supply_nodes.size()); ++i) {
 					Node u = supply_nodes[i];
-					Cost c, min_cost = std::numeric_limits<Cost>::max();
+					Cost min_cost = std::numeric_limits<Cost>::max();
 					Arc min_arc = INVALID;
 					Arc a; _graph.firstOut(a, u);
 					for (; a != INVALID; _graph.nextOut(a)) {
-						c = _cost[getArcID(a)];
+						Cost c = _cost[getArcID(a)];
 						if (c < min_cost) {
 							min_cost = c;
 							min_arc = a;
 						}
 					}
-					if (min_arc != INVALID) {
-						arc_vector.push_back(getArcID(min_arc));
-					}
+					arc_vector[i] = getArcID(min_arc);
 				}
+				arc_vector.erase(std::remove(arc_vector.begin(), arc_vector.end(), INVALID), arc_vector.end());
 			}
 
 			// Perform heuristic initial pivots

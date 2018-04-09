@@ -96,8 +96,8 @@ int main() {
 	std::vector<TsFlow> flow;
 	flow.reserve(n1 + n2 - 1);
 	double recomputed_cost = 0;
-	for (int i = 0; i < n1; i++) {
-		for (int j = 0; j < n2; j++)
+	for (arc_id_type i = 0; i < n1; i++) {
+		for (arc_id_type j = 0; j < n2; j++)
 		{
 			TsFlow f;
 			f.amount = net.flow(di.arcFromId(i*n2 + j));
