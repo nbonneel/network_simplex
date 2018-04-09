@@ -155,7 +155,7 @@ namespace lemon {
 		{
 			if (val == 0) return;
 #ifdef HASHMAP
-			typename std::unordered_map<isize_tnt, T>::iterator it = _v->data.find(_idx);
+			typename std::unordered_map<size_t, T>::iterator it = _v->data.find(_idx);
 #else
 			typename std::map<size_t, T>::iterator it = _v->data.find(_idx);
 #endif
