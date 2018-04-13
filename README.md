@@ -49,6 +49,7 @@ CPLEX is taken here as the baseline to measure the error in Earth Mover's Distan
 
 * On the 3355 runs of various sizes, my code gave (epsilon) better EMD than CPLEX 2393 times, and (epsilon) worse than CPLEX 920 times, though when the EMD is worse, it's significantly more than when it's better (though still negligible for most applications). It gave the exact same result 42 times (to 24 digits).
 * The graph above shows percentages. For large problems of about 25,000 bins, my code results in EMD less than 0.001% higher than CPLEX. For problems larger than 25,000 bins, CPLEX does not terminate (it ran 6 hours for a problem of about 28,000 bins).
+* Compiling with the floating point precision modes fp:fast (which favors fast code) or fp:precise (for more precise computations) does not change the result much.
 
 #### Single precision
 I am not sure how relevant it is to compare the EMD computed with values in single precision to the EMD computed with values in double precision. Here is the graph anyway.
