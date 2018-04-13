@@ -55,7 +55,7 @@ CPLEX is taken here as the baseline to measure the error in Earth Mover's Distan
 #### Single precision
 I am not sure how relevant it is to compare the EMD computed with values in single precision to the EMD computed with values in double precision. Here is the graph anyway.
 ![Accuracy benchmark, single precision](https://raw.githubusercontent.com/nbonneel/network_simplex/master/doc/accuracy_single.png)
-* The error rapidly grows to reach 2000% of error for a problem size of 25,000. The error remains reasonable (<15%) for problems smaller than 2000.
+* The error rapidly grows to reach 2000% for a problem size of 25,000. The error remains reasonable (<15%) for problems smaller than 2000.
 * I only computed the error in term of EMD, but other metrics could be more relevant here, especially on the transport plan itself.
 * However, the visual impact of even large errors seems moderate. Below is an animation of Monge<->Kantorovich, in the special case of the assignment problem, both computed in double and single precision. There are visible differences, though not completely obvious: the speed of particles is mostly more homogeneous / coherent in double precision.
 
