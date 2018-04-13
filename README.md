@@ -58,7 +58,8 @@ I am not sure how relevant it is to compare the EMD computed with values in sing
 * The error rapidly grows to reach 2000% of error for a problem size of 25,000. The error remains reasonable (<15%) for problems smaller than 2000.
 * I only computed the error in term of EMD, but other metrics could be more relevant here, especially on the transport plan itself.
 * However, the visual impact of even large errors seem moderate. Below is an animation of Monge<->Kantorovich, in the special case of the assignment problem, both computed in double and single precision. There are visible differences, though not completely obvious: the speed of particles is mostly more homogeneous / coherent in double precision.
-Double precision             |  Single precision
+
+Double precision           |  Single precision
 :-------------------------:|:-------------------------:
 ![MK animation double](https://raw.githubusercontent.com/nbonneel/network_simplex/master/doc/interpMK.gif)  |  ![MK animation single](https://raw.githubusercontent.com/nbonneel/network_simplex/master/doc/interpMK_float.gif)
 
