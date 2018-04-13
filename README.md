@@ -3,7 +3,7 @@
 ## Intro
 
 This library solves an optimal transport problem via linear programming, using the Network Simplex algorithm. 
-This code is a simplification and optimization from the Network Simplex implementation present in the [LEMON 1.3.1 library](http://lemon.cs.elte.hu/pub/doc/latest-svn/a00783.html). 
+This code is a simplification and optimization of the Network Simplex implementation present in the [LEMON 1.3.1 library](http://lemon.cs.elte.hu/pub/doc/latest-svn/a00783.html). 
 It performs much faster, uses less memory, and only requires 2 header files that can directly be integrated into your project.
 
 If you use this code for your publications, please acknowledge LEMON and cite the paper from which this code is based:
@@ -22,7 +22,7 @@ If you use this code for your publications, please acknowledge LEMON and cite th
 ### Protocol
 I benchmarked the code performance against CPLEX's Network Simplex (function `CPXNETprimopt`), and a Transport Simplex implementation (from [Darren T. MacDonald](https://github.com/engine99/transport-simplex)).
 The problem here is to compute the Earth Mover's Distance (and corresponding flow) between two histograms of N bins each (N is referred to as the *problem size*) using a squared Euclidean ground distance. The support of these histograms is a random sampling of the 2-D plane, and the histograms contain random values.
-For the Transport Simplex, I've set the `TSEPSILON` to 1E-9 (the default value of 1E-6 results largely unoptimal solutions to relatively large problems).
+For the Transport Simplex, I've set the `TSEPSILON` to 1E-9 (the default value of 1E-6 results in largely unoptimal solutions to relatively large problems).
 
 All values are averages over 100 runs for problems smaller than 1,000, 20 runs for problems smaller than 10,000, and 5 runs for larger problems.
 
