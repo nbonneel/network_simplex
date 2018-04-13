@@ -70,3 +70,5 @@ This has been computed in 577 seconds in double precision with 55,000 points, an
 * My code becomes orders of magnitude slower on problems of odd sizes. The speed graph above is restricted to problems of even sizes, and a graph that includes some odd sizes problems can be found below:
 
 ![Performance benchmark](https://raw.githubusercontent.com/nbonneel/network_simplex/master/doc/perf_with_odd.png)
+
+If you absolutely need to solve a large odd sized problem, it could be a good idea to add a ghost supply and demand with infinite cost to all other nodes, and 0 cost between the ghost supply and ghost demand.
