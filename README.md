@@ -19,7 +19,7 @@ If you use this code for your publications, please acknowledge LEMON and cite th
 ## Benchmark
 
 ### Buidling the benchmark
-The benchmark needs an [OpenMP](http://www.openmp.org) compliant C++ compiler to evaluate the multithread performances. On linux system, just run the `make` command.
+The benchmark needs an [OpenMP](http://www.openmp.org) compliant C++ compiler to evaluate the multithread version performances. On linux system, just run the `make` command.
 
 On MacOS with the default Apple's clang C++ compiler, install the  `libomp` library (e.g. `brew install libomp`) and run the `make -f Makefile.osx` command.
 
