@@ -2,12 +2,12 @@
 
 ## Intro
 
-This library solves an optimal transport problem via linear programming, using the Network Simplex algorithm. 
-This code is a simplification and optimization of the Network Simplex implementation present in the [LEMON 1.3.1 library](http://lemon.cs.elte.hu/pub/doc/latest-svn/a00783.html). 
+This library solves an optimal transport problem via linear programming, using the Network Simplex algorithm.
+This code is a simplification and optimization of the Network Simplex implementation present in the [LEMON 1.3.1 library](http://lemon.cs.elte.hu/pub/doc/latest-svn/a00783.html).
 It performs much faster, uses less memory, and only requires 2 header files that can directly be integrated into your project.
 
 If you use this code for your publications, please acknowledge LEMON and cite the paper from which this code is based:
-> @article{BPPH11, 
+> @article{BPPH11,
 >    author = {Bonneel, Nicolas and van de Panne, Michiel and Paris, Sylvain and Heidrich, Wolfgang},  
 >    title = {{Displacement Interpolation Using Lagrangian Mass Transport}},  
 >    journal = {ACM Transactions on Graphics (SIGGRAPH ASIA 2011)},  
@@ -16,8 +16,12 @@ If you use this code for your publications, please acknowledge LEMON and cite th
 >    year = {2011},  
 > }  
 
-
 ## Benchmark
+
+### Buidling the benchmark
+The benchmark needs an [OpenMP](http://www.openmp.org) compliant C++ compiler to evaluate the multithread performances. On linux system, just run the `make` command.
+
+On MacOS with the default Apple's clang C++ compiler, install the  `libomp` library (e.g. `brew install libomp`) and run the `make -f Makefile.osx` command.
 
 ### Protocol
 I benchmarked the code performance against CPLEX's Network Simplex (function `CPXNETprimopt`), and a Transport Simplex implementation (from [Darren T. MacDonald](https://github.com/engine99/transport-simplex)).
