@@ -1,0 +1,2 @@
+main: main.cpp full_bipartitegraph.h network_simplex_simple.h
+	g++ -std=c++11 -Ofast -march=native   -L/usr/local/opt/libomp/lib -I/usr/local/opt/libomp/include -Xpreprocessor -fopenmp -lomp -fno-signed-zeros -fno-trapping-math  -openmp  -funroll-loops main.cpp -o transport
