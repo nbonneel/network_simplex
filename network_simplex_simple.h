@@ -226,7 +226,7 @@ namespace lemon {
 		/// mixed order in the internal data structure.
 		/// In special cases, it could lead to better overall performance,
 		/// but it is usually slower. Therefore it is disabled by default.
-		NetworkSimplexSimple(const GR& graph, bool arc_mixing, int nbnodes, ArcsType nb_arcs, int maxiters = 0) :
+		NetworkSimplexSimple(const GR& graph, bool arc_mixing, int nbnodes, ArcsType nb_arcs, size_t maxiters = 0) :
 			_graph(graph),  //_arc_id(graph),
 			_arc_mixing(arc_mixing), _init_nb_nodes(nbnodes), _init_nb_arcs(nb_arcs),
 			MAX(std::numeric_limits<Value>::max()),
@@ -283,7 +283,7 @@ namespace lemon {
 
 
 	private:
-		int max_iter;
+		size_t max_iter;
 		TEMPLATE_DIGRAPH_TYPEDEFS(GR);
 
 		typedef std::vector<int> IntVector;
@@ -1515,10 +1515,11 @@ namespace lemon {
 			// Perform heuristic initial pivots
 			if (!initialPivots()) return UNBOUNDED;
 
-			int iter_number = 0;
+			size_t iter_number = 0;
 			// Execute the Network Simplex algorithm
 			while (pivot.findEnteringArc()) {
-				if ((++iter_number >= max_iter&&max_iter > 0) || max_iter<=0) {
+				if ((iter_number <= max_iter&&max_iter > 0) || max_iter<=0) {
+					iter_number++;
 					findJoinNode();
 					bool change = findLeavingArc();
 					if (delta >= MAX) return UNBOUNDED;
@@ -1527,7 +1528,7 @@ namespace lemon {
 						updateTreeStructure();
 						updatePotential();
 					}
-				}
+				} else break;
 			}
 
 			// Check feasibility
