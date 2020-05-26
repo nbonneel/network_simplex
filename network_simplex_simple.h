@@ -52,64 +52,64 @@
 #else
 #include <map>
 #endif
-//#include "core.h"
-//#include "lmath.h"
+#ifdef _OPENMP
 #include <omp.h>
+#endif
 #include <cmath>
 
 
-//#include "sparse_array_n.h"
 #include "full_bipartitegraph.h"
 
 #define INVALIDNODE -1
 #define INVALID (-1)
 
+
 namespace lemon {
+#ifndef DEFAULT_SPARSE_MAP
+  #ifdef HASHMAP
+#define DEFAULT_SPARSE_MAP std::unordered_map
+  #else
+#define DEFAULT_SPARSE_MAP std::map
+  #endif
+#endif
 
-
-	template <typename T>
+	template <typename T, template<typename...> class Map=DEFAULT_SPARSE_MAP>
 	class ProxyObject;
 
-	template<typename T>
+	template<typename T, template<typename...> class Map=DEFAULT_SPARSE_MAP>
 	class SparseValueVector
 	{
 	public:
-		SparseValueVector(size_t n = 0)   // parameter n for compatibility with standard vectors
+		template<typename...Args>
+		SparseValueVector(Args &&...)   // parameter n for compatibility with standard vectors
 		{
 		}
-		void resize(size_t n = 0) {};
+
+		template<typename...Args>
+		void resize(Args &&...) {/* does nothing */}
 		T operator[](const size_t id) const
 		{
-#ifdef HASHMAP
-			typename std::unordered_map<size_t, T>::const_iterator it = data.find(id);
-#else
-			typename std::map<size_t, T>::const_iterator it = data.find(id);
-#endif
+			auto it = data.find(id);
 			if (it == data.end())
 				return 0;
 			else
 				return it->second;
 		}
 
-		ProxyObject<T> operator[](const size_t id)
+		ProxyObject<T, Map> operator[](const size_t id)
 		{
-			return ProxyObject<T>(this, id);
+			return ProxyObject<T, Map>(this, id);
 		}
 
 		//private:
-#ifdef HASHMAP
-		std::unordered_map<size_t, T> data;
-#else
-		std::map<size_t, T> data;
-#endif
-
+		Map<size_t, T> data;
 	};
 
-	template <typename T>
+	template <typename T, template<typename...> class Map>
 	class ProxyObject {
 	public:
-		ProxyObject(SparseValueVector<T> *v, size_t idx) { _v = v; _idx = idx; };
-		ProxyObject<T> & operator=(const T &v) {
+		ProxyObject(SparseValueVector<T, Map> *v, size_t idx) { _v = v; _idx = idx; };
+		ProxyObject<T, Map> & operator=(const T &v) {
 			// If we get here, we know that operator[] was called to perform a write access,
 			// so we can insert an item in the vector if needed
 			if (v != 0)
@@ -120,11 +120,7 @@ namespace lemon {
 		operator T() {
 			// If we get here, we know that operator[] was called to perform a read access,
 			// so we can simply return the existing object
-#ifdef HASHMAP
-			typename std::unordered_map<size_t, T>::iterator it = _v->data.find(_idx);
-#else
-			typename std::map<size_t, T>::iterator it = _v->data.find(_idx);
-#endif
+			auto it = _v->data.find(_idx);
 			if (it == _v->data.end())
 				return 0;
 			else
@@ -134,11 +130,7 @@ namespace lemon {
 		void operator+=(T val)
 		{
 			if (val == 0) return;
-#ifdef HASHMAP
-			typename std::unordered_map<size_t, T>::iterator it = _v->data.find(_idx);
-#else
-			typename std::map<size_t, T>::iterator it = _v->data.find(_idx);
-#endif
+			auto it = _v->data.find(_idx);
 			if (it == _v->data.end())
 				_v->data[_idx] = val;
 			else
@@ -153,11 +145,7 @@ namespace lemon {
 		void operator-=(T val)
 		{
 			if (val == 0) return;
-#ifdef HASHMAP
-			typename std::unordered_map<size_t, T>::iterator it = _v->data.find(_idx);
-#else
-			typename std::map<size_t, T>::iterator it = _v->data.find(_idx);
-#endif
+			auto it = _v->data.find(_idx);
 			if (it == _v->data.end())
 				_v->data[_idx] = -val;
 			else
@@ -170,7 +158,7 @@ namespace lemon {
 			}
 		}
 
-		SparseValueVector<T> *_v;
+		SparseValueVector<T, Map> *_v;
 		size_t _idx;
 	};
 
@@ -212,7 +200,7 @@ namespace lemon {
 	/// \note %NetworkSimplexSimple provides five different pivot rule
 	/// implementations, from which the most efficient one is used
 	/// by default. For more information, see \ref PivotRule.
-	template <typename GR, typename V = int, typename C = V, typename ArcsType = int64_t>
+	template <typename GR, typename V = int, typename C = V, typename ArcsType = int64_t, template<typename ...> class Map=DEFAULT_SPARSE_MAP>
 	class NetworkSimplexSimple
 	{
 	public:
@@ -228,10 +216,7 @@ namespace lemon {
 		/// but it is usually slower. Therefore it is disabled by default.
 		NetworkSimplexSimple(const GR& graph, bool arc_mixing, int nbnodes, ArcsType nb_arcs, size_t maxiters = 0) :
 			_graph(graph),  //_arc_id(graph),
-			_arc_mixing(arc_mixing), _init_nb_nodes(nbnodes), _init_nb_arcs(nb_arcs),
-			MAX(std::numeric_limits<Value>::max()),
-			INF(std::numeric_limits<Value>::has_infinity ?
-				std::numeric_limits<Value>::infinity() : MAX)
+			_arc_mixing(arc_mixing), _init_nb_nodes(nbnodes), _init_nb_arcs(nb_arcs)
 		{
 			// Reset data structures
 			reset();
@@ -329,7 +314,7 @@ namespace lemon {
 		CostVector _cost;
 		ValueVector _supply;
 #ifdef SPARSE_FLOW
-		SparseValueVector<Value> _flow;
+		SparseValueVector<Value, Map> _flow;
 #else
 		ValueVector _flow;
 #endif
@@ -354,7 +339,7 @@ namespace lemon {
 		ArcsType stem, par_stem, new_stem;
 		Value delta;
 
-		const Value MAX;
+		static constexpr Value MAX_VAL = std::numeric_limits<Value>::max();
 
 		ArcsType mixingCoeff;
 
@@ -365,7 +350,7 @@ namespace lemon {
 		/// Constant for infinite upper bounds (capacities).
 		/// It is \c std::numeric_limits<Value>::infinity() if available,
 		/// \c std::numeric_limits<Value>::max() otherwise.
-		const Value INF;
+        static constexpr Value INF = std::numeric_limits<Value>::has_infinity ? std::numeric_limits<Value>::infinity() : MAX_VAL;
 
 	private:
 
@@ -389,7 +374,7 @@ namespace lemon {
 			//int n = _arc_num-arc._id-1;
 			ArcsType n = _arc_num - GR::id(arc) - 1;
 
-			//ArcsType a = mixingCoeff*(n%mixingCoeff) + n/mixingCoeff; 
+			//ArcsType a = mixingCoeff*(n%mixingCoeff) + n/mixingCoeff;
 			//ArcsType b = _arc_id[arc];
 			if (_arc_mixing)
 				return sequence(n);
@@ -466,15 +451,21 @@ namespace lemon {
 			bool findEnteringArc() {
 				Cost min_val = 0;
 
+#ifdef _OPENMP
 				ArcsType N = omp_get_max_threads();
 				std::vector<Cost> minArray(N, 0);
 				std::vector<ArcsType> arcId(N);
 				ArcsType bs = (ArcsType)ceil(_block_size / (double)N);
+#else
+				std::array<Cost, 1> minArray{Cost(0)};
+				std::array<ArcsType, 1> arcId{0};
+#endif
 
 				for (ArcsType i = 0; i < _search_arc_num; i += _block_size) {
 
 					ArcsType e;
 					ArcsType j;
+#ifdef _OPENMP
 #pragma omp parallel
 					{
 						int t = omp_get_thread_num();
@@ -495,6 +486,21 @@ namespace lemon {
 							_in_arc = arcId[j];
 						}
 					}
+#else
+					{
+
+						for (j = 0; j < std::min(i + _block_size, _search_arc_num) - i; j++) {
+							e = (_next_arc + i + j); if (e >= _search_arc_num) e -= _search_arc_num;
+							Cost c = _state[e] * (_cost[e] + _pi[_source[e]] - _pi[_target[e]]);
+							if (c < minArray[0]) {
+								minArray[0] = c;
+								arcId[0] = e;
+							}
+						}
+					}
+					min_val = minArray[0];
+					_in_arc = arcId[0];
+#endif
 					Cost a = std::abs(_pi[_source[_in_arc]]) > std::abs(_pi[_target[_in_arc]]) ? std::abs(_pi[_source[_in_arc]]) : std::abs(_pi[_target[_in_arc]]);
 					a = a > std::abs(_cost[_in_arc]) ? a : std::abs(_cost[_in_arc]);
 					if (min_val < -std::numeric_limits<Cost>::epsilon()*a) {
@@ -511,7 +517,7 @@ namespace lemon {
 			}
 
 
-			// Find next entering arc 
+			// Find next entering arc
 			/*bool findEnteringArc() {
 				Cost min_val = 0;
 				int N = omp_get_max_threads();
@@ -564,7 +570,7 @@ namespace lemon {
 
 				return true;
 			}*/
-			
+
 
 			/*bool findEnteringArc() {
 				Cost c, min = 0;
@@ -684,7 +690,7 @@ namespace lemon {
 			return *this;
 		}
 		template<typename SupplyMap>
-		NetworkSimplexSimple& supplyMap(const SupplyMap* map1, int n1, const SupplyMap* map2, int n2) {
+		NetworkSimplexSimple& supplyMap(const SupplyMap* map1, int n1, const SupplyMap* map2, int) {
 			Node n; _graph.first(n);
 			for (; n != INVALIDNODE; _graph.next(n)) {
 				if (n<n1)
@@ -695,7 +701,7 @@ namespace lemon {
 			return *this;
 		}
 		template<typename SupplyMap>
-		NetworkSimplexSimple& supplyMapAll(SupplyMap val1, int n1, SupplyMap val2, int n2) {
+		NetworkSimplexSimple& supplyMapAll(SupplyMap val1, int n1, SupplyMap val2, int) {
 			Node n; _graph.first(n);
 			for (; n != INVALIDNODE; _graph.next(n)) {
 				if (n<n1)
@@ -894,8 +900,10 @@ namespace lemon {
 				num_big_subsequences = _arc_num % mixingCoeff;
 				num_total_big_subsequence_numbers = subsequence_length * num_big_subsequences;
 
+#ifdef _OPENMP
 #pragma omp parallel for schedule(static)
-				for (Arc a = 0; a <= _graph.maxArcId(); a++) {   // --a <=> _graph.next(a)  , -1 == INVALID 
+#endif
+				for (Arc a = 0; a <= _graph.maxArcId(); a++) {   // --a <=> _graph.next(a)  , -1 == INVALID
 					ArcsType i = sequence(_graph.maxArcId()-a);
 					_source[i] = _node_id(_graph.source(a));
 					_target[i] = _node_id(_graph.target(a));
@@ -955,12 +963,7 @@ namespace lemon {
 			Number c = 0;
 
 #ifdef SPARSE_FLOW
-		#ifdef HASHMAP
-			typename std::unordered_map<size_t, Value>::const_iterator it;
-		#else
-			typename std::map<size_t, Value>::const_iterator it;
-		#endif
-			for (it = _flow.data.begin(); it!=_flow.data.end(); ++it)
+			for (auto it = _flow.data.begin(); it!=_flow.data.end(); ++it)
 				c += Number(it->second) * Number(_cost[it->first]);
 			return c;
 #else
@@ -1063,7 +1066,7 @@ namespace lemon {
 				_state[i] = STATE_LOWER;
 			}
 #ifdef SPARSE_FLOW
-			_flow = SparseValueVector<Value>();
+			_flow = SparseValueVector<Value, Map>();
 #endif
 
 			// Set data for the artificial root node
@@ -1082,7 +1085,7 @@ namespace lemon {
 				// EQ supply constraints
 				_search_arc_num = _arc_num;
 				_all_arc_num = _arc_num + _node_num;
-				for (ArcsType u = 0, e = _arc_num; u != _node_num; ++u, ++e) {
+				for (ArcsType u = 0, e = _arc_num; u != static_cast<ArcsType>(_node_num); ++u, ++e) {
 					_parent[u] = _root;
 					_pred[u] = e;
 					_thread[u] = u + 1;
@@ -1110,7 +1113,7 @@ namespace lemon {
 				// LEQ supply constraints
 				_search_arc_num = _arc_num + _node_num;
 				ArcsType f = _arc_num + _node_num;
-				for (ArcsType u = 0, e = _arc_num; u != _node_num; ++u, ++e) {
+				for (ArcsType u = 0, e = _arc_num; u != static_cast<ArcsType>(_node_num); ++u, ++e) {
 					_parent[u] = _root;
 					_thread[u] = u + 1;
 					_rev_thread[u + 1] = u;
@@ -1147,7 +1150,7 @@ namespace lemon {
 				// GEQ supply constraints
 				_search_arc_num = _arc_num + _node_num;
 				ArcsType f = _arc_num + _node_num;
-				for (ArcsType u = 0, e = _arc_num; u != _node_num; ++u, ++e) {
+				for (ArcsType u = 0, e = _arc_num; u != static_cast<ArcsType>(_node_num); ++u, ++e) {
 					_parent[u] = _root;
 					_thread[u] = u + 1;
 					_rev_thread[u + 1] = u;
@@ -1217,7 +1220,7 @@ namespace lemon {
 			ArcsType e;
 
 			// Search the cycle along the path form the first node to the root
-			for (int u = first; u != join; u = _parent[u]) {
+			for (auto u = first; u != join; u = _parent[u]) {
 				e = _pred[u];
 				d = _forward[u] ? _flow[e] : INF;
 				if (d < delta) {
@@ -1227,7 +1230,7 @@ namespace lemon {
 				}
 			}
 			// Search the cycle along the path form the second node to the root
-			for (int u = second; u != join; u = _parent[u]) {
+			for (int u = second; u != static_cast<int>(join); u = _parent[u]) {
 				e = _pred[u];
 				d = _forward[u] ? INF : _flow[e];
 				if (d <= delta) {
@@ -1253,10 +1256,10 @@ namespace lemon {
 			if (delta > 0) {
 				Value val = _state[in_arc] * delta;
 				_flow[in_arc] += val;
-				for (int u = _source[in_arc]; u != join; u = _parent[u]) {
+				for (auto u = _source[in_arc]; u != static_cast<int>(join); u = _parent[u]) {
 					_flow[_pred[u]] += _forward[u] ? -val : val;
 				}
-				for (int u = _target[in_arc]; u != join; u = _parent[u]) {
+				for (auto u = _target[in_arc]; u != static_cast<int>(join); u = _parent[u]) {
 					_flow[_pred[u]] += _forward[u] ? val : -val;
 				}
 			}
@@ -1282,10 +1285,10 @@ namespace lemon {
 				// Update _parent, _pred, _pred_dir
 				_parent[u_in] = v_in;
 				_pred[u_in] = in_arc;
-				_forward[u_in] = (u_in == _source[in_arc]);
+				_forward[u_in] = (static_cast<int>(u_in) == _source[in_arc]);
 
 				// Update _thread and _rev_thread
-				if (_thread[v_in] != u_out) {
+				if (_thread[v_in] != static_cast<int>(u_out)) {
 					ArcsType after = _thread[old_last_succ];
 					_thread[old_rev_thread] = after;
 					_rev_thread[after] = old_rev_thread;
@@ -1298,7 +1301,7 @@ namespace lemon {
 			} else {
 				// Handle the case when old_rev_thread equals to v_in
 				// (it also means that join and v_out coincide)
-				int thread_continue = old_rev_thread == v_in ?
+				int thread_continue = old_rev_thread == static_cast<int>(v_in) ?
 					_thread[old_last_succ] : _thread[v_in];
 
 				// Update _thread and _parent along the stem nodes (i.e. the nodes
@@ -1311,7 +1314,7 @@ namespace lemon {
 				_thread[v_in] = u_in;
 				_dirty_revs.clear();
 				_dirty_revs.push_back(v_in);
-				while (stem != u_out) {
+				while (stem != static_cast<int>(u_out)) {
 					// Insert the next stem node into the thread list
 					next_stem = _parent[stem];
 					_thread[last] = next_stem;
@@ -1339,7 +1342,7 @@ namespace lemon {
 
 				// Remove the subtree of u_out from the thread list except for
 				// the case when old_rev_thread equals to v_in
-				if (old_rev_thread != v_in) {
+				if (old_rev_thread != static_cast<int>(v_in)) {
 					_thread[old_rev_thread] = after;
 					_rev_thread[after] = old_rev_thread;
 				}
@@ -1353,7 +1356,7 @@ namespace lemon {
 				// Update _pred, _pred_dir, _last_succ and _succ_num for the
 				// stem nodes from u_out to u_in
 				int tmp_sc = 0, tmp_ls = _last_succ[u_out];
-				for (int u = u_out, p = _parent[u]; u != u_in; u = p, p = _parent[u]) {
+				for (int u = u_out, p = _parent[u]; u != static_cast<int>(u_in); u = p, p = _parent[u]) {
 					_pred[u] = _pred[p];
 					_forward[u] = !_forward[p];
 					tmp_sc += _succ_num[u] - _succ_num[p];
@@ -1361,19 +1364,19 @@ namespace lemon {
 					_last_succ[p] = tmp_ls;
 				}
 				_pred[u_in] = in_arc;
-				_forward[u_in] = (u_in == _source[in_arc]);
+				_forward[u_in] = (static_cast<int>(u_in) == _source[in_arc]);
 				_succ_num[u_in] = old_succ_num;
 			}
 
 			// Update _last_succ from v_in towards the root
-			int up_limit_out = _last_succ[join] == v_in ? join : -1;
+			int up_limit_out = static_cast<ArcsType>(_last_succ[join]) == v_in ? join : -1;
 			int last_succ_out = _last_succ[u_out];
-			for (int u = v_in; u != -1 && _last_succ[u] == v_in; u = _parent[u]) {
+			for (int u = v_in; u != -1 && _last_succ[u] == static_cast<int>(v_in); u = _parent[u]) {
 				_last_succ[u] = last_succ_out;
 			}
 
 			// Update _last_succ from v_out towards the root
-			if (join != old_rev_thread && v_in != old_rev_thread) {
+			if (static_cast<int>(join) != old_rev_thread && static_cast<int>(v_in) != old_rev_thread) {
 				for (int u = v_out; u != up_limit_out && _last_succ[u] == old_last_succ;
 					u = _parent[u]) {
 					_last_succ[u] = old_rev_thread;
@@ -1386,11 +1389,11 @@ namespace lemon {
 			}
 
 			// Update _succ_num from v_in to join
-			for (int u = v_in; u != join; u = _parent[u]) {
+			for (int u = v_in; u != static_cast<int>(join); u = _parent[u]) {
 				_succ_num[u] += old_succ_num;
 			}
 			// Update _succ_num from v_out to join
-			for (int u = v_out; u != join; u = _parent[u]) {
+			for (int u = v_out; u != static_cast<int>(join); u = _parent[u]) {
 				_succ_num[u] -= old_succ_num;
 			}
 		}
@@ -1403,7 +1406,7 @@ namespace lemon {
 				_pi[u] += sigma;
 			}
 		}
-		
+
 
 		// Heuristic initial pivots
 		bool initialPivots() {
@@ -1448,7 +1451,9 @@ namespace lemon {
 				} else {
 					arc_vector.resize(demand_nodes.size());
 					// Find the min. cost incomming arc for each demand node
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
 					for (ArcsType i = 0; i < ArcsType(demand_nodes.size()); ++i) {
 						Node v = demand_nodes[i];
 						Cost min_cost = std::numeric_limits<Cost>::max();
@@ -1460,15 +1465,17 @@ namespace lemon {
 								min_cost = c;
 								min_arc = a;
 							}
-						}						
-						arc_vector[i] = getArcID(min_arc);					
+						}
+						arc_vector[i] = getArcID(min_arc);
 					}
 					arc_vector.erase(std::remove(arc_vector.begin(), arc_vector.end(), INVALID), arc_vector.end());
 				}
 			} else {
 				arc_vector.resize(supply_nodes.size());
 				// Find the min. cost outgoing arc for each supply node
+#ifdef _OPENMP
 #pragma omp parallel for
+#endif
 				for (int i = 0; i < int(supply_nodes.size()); ++i) {
 					Node u = supply_nodes[i];
 					Cost min_cost = std::numeric_limits<Cost>::max();
@@ -1493,7 +1500,7 @@ namespace lemon {
 					_pi[_target[in_arc]]) >= 0) continue;
 				findJoinNode();
 				bool change = findLeavingArc();
-				if (delta >= MAX) return false;
+				if (delta >= MAX_VAL) return false;
 				changeFlow(change);
 				if (change) {
 					updateTreeStructure();
@@ -1522,7 +1529,7 @@ namespace lemon {
 					iter_number++;
 					findJoinNode();
 					bool change = findLeavingArc();
-					if (delta >= MAX) return UNBOUNDED;
+					if (delta >= MAX_VAL) return UNBOUNDED;
 					changeFlow(change);
 					if (change) {
 						updateTreeStructure();
@@ -1541,20 +1548,20 @@ namespace lemon {
 			if (_sum_supply == 0) {
 				if (_stype == GEQ) {
 					Cost max_pot = -std::numeric_limits<Cost>::max();
-					for (ArcsType i = 0; i != _node_num; ++i) {
+					for (ArcsType i = 0; i != static_cast<ArcsType>(_node_num); ++i) {
 						if (_pi[i] > max_pot) max_pot = _pi[i];
 					}
 					if (max_pot > 0) {
-						for (ArcsType i = 0; i != _node_num; ++i)
+						for (ArcsType i = 0; i != static_cast<ArcsType>(_node_num); ++i)
 							_pi[i] -= max_pot;
 					}
 				} else {
 					Cost min_pot = std::numeric_limits<Cost>::max();
-					for (ArcsType i = 0; i != _node_num; ++i) {
+					for (ArcsType i = 0; i != static_cast<ArcsType>(_node_num); ++i) {
 						if (_pi[i] < min_pot) min_pot = _pi[i];
 					}
 					if (min_pot < 0) {
-						for (ArcsType i = 0; i != _node_num; ++i)
+						for (ArcsType i = 0; i != static_cast<ArcsType>(_node_num); ++i)
 							_pi[i] -= min_pot;
 					}
 				}

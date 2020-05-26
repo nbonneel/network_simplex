@@ -1,12 +1,12 @@
 /* -*- mode: C++; indent-tabs-mode: nil; -*-
  *
- * This file has been adapted by Nicolas Bonneel (2013), 
+ * This file has been adapted by Nicolas Bonneel (2013),
  * from full_graph.h from LEMON, a generic C++ optimization library,
  * to implement a lightweight fully connected bipartite graph. A previous
- * version of this file is used as part of the Displacement Interpolation 
- * project, 
+ * version of this file is used as part of the Displacement Interpolation
+ * project,
  * Web: http://www.cs.ubc.ca/labs/imager/tr/2011/DisplacementInterpolation/
- * 
+ *
  *
  **** Original file Copyright Notice :
  * Copyright (C) 2003-2010
@@ -73,7 +73,7 @@ namespace lemon {
 
     int _node_num;
 	int64_t _arc_num;
-	
+
     FullBipartiteDigraphBase() {}
 
     void construct(int n1, int n2) { _node_num = n1+n2; _arc_num = (int64_t)n1 * (int64_t)n2; _n1=n1; _n2=n2;}
